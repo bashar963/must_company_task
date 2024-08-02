@@ -46,7 +46,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   List<CameraDescription> _cameras = [];
   Timer? _timer;
   var _timerRunning = false;
-  static const oneSec = Duration(seconds: 10);
+  static const oneSec = Duration(seconds: 1);
   CapturedData? _screenshotData;
   Uint8List? _headShotImageFile;
   CameraController? _cameraController;
@@ -194,22 +194,19 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
             if (Platform.isMacOS)
-              Visibility(
-                visible: false,
-                child: SizedBox(
-                  width: 300,
-                  height: 300,
-                  child: CameraMacOSView(
-                    key: cameraKey,
-                    fit: BoxFit.fill,
-                    enableAudio: false,
-                    cameraMode: CameraMacOSMode.photo,
-                    onCameraInizialized: (CameraMacOSController controller) {
-                      setState(() {
-                        macOSController = controller;
-                      });
-                    },
-                  ),
+              SizedBox(
+                width: 0,
+                height: 0,
+                child: CameraMacOSView(
+                  key: cameraKey,
+                  fit: BoxFit.fill,
+                  enableAudio: false,
+                  cameraMode: CameraMacOSMode.photo,
+                  onCameraInizialized: (CameraMacOSController controller) {
+                    setState(() {
+                      macOSController = controller;
+                    });
+                  },
                 ),
               ),
             Row(
