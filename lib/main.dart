@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:camera/camera.dart';
+import 'package:camera_macos/camera_macos.dart';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:screen_capturer/screen_capturer.dart';
@@ -46,9 +48,10 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   var _timerRunning = false;
   static const oneSec = Duration(seconds: 10);
   CapturedData? _screenshotData;
-  XFile? _headShotImageFile;
+  Uint8List? _headShotImageFile;
   CameraController? _cameraController;
-
+  CameraMacOSController? macOSController;
+  final GlobalKey cameraKey = GlobalKey(debugLabel: "cameraKey");
   @override
   void initState() {
     _initializeCameraController(null);
@@ -77,6 +80,10 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   }
 
   void _initializeCameraController(CameraDescription? description) async {
+    if (Platform.isMacOS) {
+      return;
+    }
+
     if (description == null && _cameras.isEmpty) {
       _cameras = await availableCameras();
     }
@@ -101,7 +108,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
 
   void _startTimer() async {
     bool allowed = await screenCapturer.isAccessAllowed();
-    print(allowed);
+
     if (!allowed) {
       await screenCapturer.requestAccess();
     }
@@ -126,17 +133,27 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
               '${dir.path}/screenshot-${DateTime.now().toIso8601String()}.png',
           copyToClipboard: false,
         );
-        print(capturedData);
-        if (_cameraController?.value.isInitialized == true) {
-          final headShotImageFile = await _cameraController?.takePicture();
-          setState(() {
-            _headShotImageFile = headShotImageFile;
-          });
+
+        if (Platform.isMacOS) {
+          if (macOSController != null) {
+            final headShotImageFile = await macOSController!.takePicture();
+
+            setState(() {
+              _headShotImageFile = headShotImageFile?.bytes;
+            });
+          }
+        } else {
+          if (_cameraController?.value.isInitialized == true) {
+            final headShotImageFile =
+                await (await _cameraController?.takePicture())?.readAsBytes();
+            setState(() {
+              _headShotImageFile = headShotImageFile;
+            });
+          }
         }
 
         setState(() {
           _screenshotData = capturedData;
-
           _counter++;
         });
       } catch (e) {
@@ -176,6 +193,25 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
+            if (Platform.isMacOS)
+              Visibility(
+                visible: false,
+                child: SizedBox(
+                  width: 300,
+                  height: 300,
+                  child: CameraMacOSView(
+                    key: cameraKey,
+                    fit: BoxFit.fill,
+                    enableAudio: false,
+                    cameraMode: CameraMacOSMode.photo,
+                    onCameraInizialized: (CameraMacOSController controller) {
+                      setState(() {
+                        macOSController = controller;
+                      });
+                    },
+                  ),
+                ),
+              ),
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -193,9 +229,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
                       children: [
                         const Text('Head shot'),
                         Expanded(
-                          child: Image.file(
-                            File(_headShotImageFile!.path),
-                          ),
+                          child: Image.memory(_headShotImageFile!),
                         ),
                       ],
                     ),
