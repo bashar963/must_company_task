@@ -5,7 +5,6 @@ import 'dart:typed_data';
 import 'package:camera/camera.dart';
 import 'package:camera_macos/camera_macos.dart';
 import 'package:flutter/material.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:screen_capturer/screen_capturer.dart';
 
 void main() async {
@@ -16,8 +15,6 @@ void main() async {
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
-
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -42,26 +39,21 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
   int _counter = 0;
-  Directory? _screenshotsDirectory;
+
   List<CameraDescription> _cameras = [];
   Timer? _timer;
   var _timerRunning = false;
   static const oneSec = Duration(seconds: 1);
-  CapturedData? _screenshotData;
+  Uint8List? _screenshotData;
   Uint8List? _headShotImageFile;
   CameraController? _cameraController;
-  CameraMacOSController? macOSController;
+  CameraMacOSController? _macOSController;
   final GlobalKey cameraKey = GlobalKey(debugLabel: "cameraKey");
   @override
   void initState() {
     _initializeCameraController(null);
 
-    _init();
     super.initState();
-  }
-
-  Future<void> _init() async {
-    _screenshotsDirectory = await getApplicationDocumentsDirectory();
   }
 
   @override
@@ -124,19 +116,33 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
       _timerRunning = true;
     });
     _timer = Timer.periodic(oneSec, (_) async {
+      // take screenshot every 5 seconds
+      if (_counter % 5 != 0) {
+        setState(() {
+          _counter++;
+        });
+        return;
+      }
+
       try {
-        final Directory dir =
-            _screenshotsDirectory ?? await getApplicationDocumentsDirectory();
+        setState(() {
+          _counter++;
+        });
+
         final capturedData = await screenCapturer.capture(
           mode: CaptureMode.screen,
-          imagePath:
-              '${dir.path}/screenshot-${DateTime.now().toIso8601String()}.png',
           copyToClipboard: false,
         );
+        Uint8List? screenshotDat;
+        if (capturedData == null) {
+          screenshotDat = await screenCapturer.readImageFromClipboard();
+        } else {
+          screenshotDat = capturedData.imageBytes;
+        }
 
         if (Platform.isMacOS) {
-          if (macOSController != null) {
-            final headShotImageFile = await macOSController!.takePicture();
+          if (_macOSController != null) {
+            final headShotImageFile = await _macOSController!.takePicture();
 
             setState(() {
               _headShotImageFile = headShotImageFile?.bytes;
@@ -153,7 +159,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
         }
 
         setState(() {
-          _screenshotData = capturedData;
+          _screenshotData = screenshotDat;
           _counter++;
         });
       } catch (e) {
@@ -177,7 +183,12 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
 
   @override
   void dispose() {
-    _cameraController?.dispose();
+    if (Platform.isMacOS) {
+      _macOSController?.destroy();
+    } else {
+      _cameraController?.dispose();
+    }
+
     _timer?.cancel();
     super.dispose();
   }
@@ -204,7 +215,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
                   cameraMode: CameraMacOSMode.photo,
                   onCameraInizialized: (CameraMacOSController controller) {
                     setState(() {
-                      macOSController = controller;
+                      _macOSController = controller;
                     });
                   },
                 ),
@@ -231,7 +242,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
                       ],
                     ),
                   ),
-                if (_screenshotData?.imageBytes != null)
+                if (_screenshotData != null)
                   Container(
                     width: 300,
                     height: 300,
@@ -246,7 +257,7 @@ class _MyHomePageState extends State<MyHomePage> with WidgetsBindingObserver {
                         const Text('Screenshot'),
                         Expanded(
                           child: Image.memory(
-                            _screenshotData!.imageBytes!,
+                            _screenshotData!,
                           ),
                         ),
                       ],
