@@ -1,10 +1,7 @@
 import 'dart:async';
-
 import 'dart:typed_data';
 
-import 'package:camera_macos/camera_macos.dart';
 import 'package:must_company_task/features/timer/domain/use_cases/dispose_timer_services_use_case.dart';
-
 import 'package:must_company_task/features/timer/domain/use_cases/init_timer_services_use_case.dart';
 import 'package:must_company_task/features/timer/domain/use_cases/take_headshot_use_case.dart';
 import 'package:must_company_task/features/timer/domain/use_cases/take_screenshot_use_case.dart';
@@ -44,8 +41,6 @@ class TimerViewModel {
 
   final BehaviorSubject<bool> _isInitialized =
       BehaviorSubject<bool>.seeded(false);
-
-  CameraMacOSController? _macOSController;
 
   /// public variables
   late final ValueStream<int> counter = _counter.shareValue();
@@ -106,16 +101,11 @@ class TimerViewModel {
     _counter.sink.add(0);
   }
 
-  void setMacOSController(CameraMacOSController controller) {
-    _macOSController = controller;
-  }
-
   void dispose() {
     _disposeTimerServicesUseCase.call(null);
     _timer?.cancel();
     _isTimerRunning.close();
     _headshotImageFile.close();
-    _macOSController?.destroy();
     _screenshotImageFile.close();
     _counter.close();
   }

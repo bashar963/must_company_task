@@ -1,7 +1,4 @@
-import 'dart:io';
 import 'dart:typed_data';
-
-import 'package:camera_macos/camera_macos.dart';
 
 import 'package:flutter/material.dart';
 import 'package:must_company_task/core/utils/time_formatter.dart';
@@ -52,7 +49,6 @@ class _TimerScreenState extends State<TimerScreen> with WidgetsBindingObserver {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: <Widget>[
-                  if (Platform.isMacOS) _macOSCameraView(),
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -90,22 +86,6 @@ class _TimerScreenState extends State<TimerScreen> with WidgetsBindingObserver {
         onPauseTimerPressed: _viewModel.pauseTimer,
         onResetTimerPressed: _viewModel.resetTimer,
         isTimerRunning: _viewModel.isTimerRunning,
-      ),
-    );
-  }
-
-  Widget _macOSCameraView() {
-    return SizedBox(
-      width: 0,
-      height: 0,
-      child: CameraMacOSView(
-        key: cameraKey,
-        fit: BoxFit.fill,
-        enableAudio: false,
-        cameraMode: CameraMacOSMode.photo,
-        onCameraInizialized: (controller) {
-          _viewModel.setMacOSController(controller);
-        },
       ),
     );
   }
